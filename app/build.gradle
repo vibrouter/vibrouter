@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'deploygate'
 
 android {
     compileSdkVersion 25
@@ -53,6 +54,27 @@ android {
     }
     dexOptions {
         javaMaxHeapSize "4g" //specify the heap size for the dex process
+    }
+}
+
+deploygate {
+    if (project.rootProject.file('local.properties').exists()) {
+        // For local build
+        Properties properties = new Properties()
+        properties.load(project.rootProject.file('local.properties').newDataInputStream())
+        userName = properties.getProperty('deploygate.username')
+        token = properties.getProperty('deploygate.token')
+    } else {
+        // For travis ci
+        userName = "${System.env.DEPLOYGATE_USERNAME}"
+        token = "${System.env.DEPLOYGATE_TOKEN}"
+    }
+
+    apks {
+        debug {
+            sourceFile = file("./build/outputs/apk/app-debug.apk")
+            message = "Debug build apk"
+        }
     }
 }
 

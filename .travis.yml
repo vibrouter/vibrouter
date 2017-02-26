@@ -1,5 +1,10 @@
 language: android
 
+env:
+  global:
+   - secure: "iEY8djvj0824GX64blYa545fQtOFL/k+nlKon9hHlhodqn+wJ9FAA8jk6dT4DSHzbQEPy3X9JCi8jVfecyGryYrmywEhKYCJCyuW7xce5ryLAaqe5k8oNKkzbvK3vr5FyCuYac/9S8nXfdstdrnplwyXuEBFdMyjiFjdFGCaqsi52gXpJaogFA1APBqOTCnmHnYneKYMERhAvpfd1vs+wUtanNhu8UTDy073FzbIo6MjvL6VJtpmKM9ZZunv5mJY3utxD2cGTkWHArc49XHv4qsyA2txHNa7vQMOFWg3ZMCmLUTwlnELjNWZrBscX6/pL0MlFYmy1YkD5L9B1mGnLQ2HDuBQQIl+i/rbgi7Hswse2RNo/uMziPYViJuSdEfUk7iy5hQkw9Aj6C/FdWKr4xwcuKIYrtrzmRd+cl3S0S4PnrWgUuAaqFDDvS87SY64FKRxyLN1vv0LEDjXxUiljmuuEsCSXW2rsx0wTj7Aqjnpl2Z/s13aHOM+vdu3ECyC/ZU0kHmA+e+DIX9366EQi45dOGHtHXX9KKmaMvnS69iiKKBIAooVyo5+TZY6oncW5nAh82qOrGxcXA6Hes69pski52zqLrvSzaCyZOrljgYSkCBNcM0dwAep83PktSUlgsRHf5ebCkDJjCFGwbh3CUQHrrLw8T1d6txvz1txf74="
+   - secure: "SrhHXYxEQDqIaQx2BLHV0PjPqgOMd53kZSbmH98XgB+fp9rx2nScNGfsdTApo5QJTjA3kvgDgdtN07cKXybgNmwNjP9znajZAQeJBqpPfXc5pUrZlf13uPPD31QFZQt1VuCvf+TvPzH1TdPGaEL6Q3deR87qu+/Vg4TsxTNpgj3tPx6uSk1YuGe8sO3axcTU6R+LD6HLbza8G8WmQFoURPenkBL0PDPCaXQVokXpHxiRTDIgpSpjoQClFimTf93LwCmVQTqclyTZmhEZMwuoYB5htpkrXTNXV8zh6At2bwJ+zewhXTnXDjBelWudMhRXEsvF1dBmECcZ1bIvao/AqZMOMclKELp7aCwaylpUeUfVBDsBCOx90HJ0qmf6VcgTSrRht2cTU2RCIzhaWmxPz4xOBB2yyeMGlBntRPKYxm9Fc8keWq+TB8KNk5nOFD9g6zqbpyJnsFcIVkAORCc97Gf/i6udlTbUeC1uitnL7StFaWbKA7Mg2KavuJfe8KY8ErLPXmOBC7PjM0gMpuXcZ0hbefpzpRIV8ddNLtvgLCiS9j/PL/3puhvudJMxSahxbgHfvjyIAtr/jDoY11d6fBmEKcBR4GyndHgDuv9noaKeyxP1+QSssMtoLywEWsIDRDBKgg3NeBuQpJKl6a6D+ZoC0I0gXdJ2h78pVo+61xM="
+
 branches:
   only:
     - master
@@ -30,6 +35,9 @@ script:
  - ./gradlew build connectedCheck
 
 jdk: oraclejdk8
+
+after_success:
+ - test $TRAVIS_PULL_REQUEST = "false" && test $TRAVIS_BRANCH = "develop" && ./gradlew uploadDeployGateDebug
 
 after_failure:
  - cat $TRAVIS_BUILD_DIR/app/build/outputs/lint-results-debug.xml

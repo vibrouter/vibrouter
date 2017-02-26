@@ -30,7 +30,7 @@ import io.github.vibrouter.databinding.ActivityMainBinding;
 import io.github.vibrouter.fragments.NavigationFragment;
 
 public abstract class BaseActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener{
+        implements NavigationView.OnNavigationItemSelectedListener {
     private static final String[] REQUIRED_PERMISSIONS = {
             Manifest.permission.INTERNET,
             Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -56,6 +56,7 @@ public abstract class BaseActivity extends AppCompatActivity
         public void onServiceConnected(ComponentName name, IBinder service) {
             mService = ((MainService.LocalBinder) service).getService();
             changeFragmentTo(new NavigationFragment());
+
             Toast.makeText(BaseActivity.this, "Connected to service", Toast.LENGTH_SHORT).show();
         }
 
@@ -78,12 +79,10 @@ public abstract class BaseActivity extends AppCompatActivity
         toggle.syncState();
 
         mBinding.navView.setNavigationItemSelectedListener(this);
-    }
 
-    @Override
-    protected void onDestroy() {
-        mBinding = null;
-        super.onDestroy();
+        Intent intent = new Intent(this, MainService.class);
+        startService(intent);
+        bindService(intent, mServiceConnection, BIND_AUTO_CREATE);
     }
 
     @Override
@@ -92,21 +91,22 @@ public abstract class BaseActivity extends AppCompatActivity
         if (needPermissions()) {
             Log.i(TAG, "Requesting permissions!");
             requestNecessaryPermissions();
-        } else {
-            Log.i(TAG, "Map creating!");
-            Intent intent = new Intent(this, MainService.class);
-            startService(intent);
-            bindService(intent, mServiceConnection, BIND_AUTO_CREATE);
         }
     }
 
     @Override
     protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        unbindService(mServiceConnection);
         if (mService != null) {
-            unbindService(mServiceConnection);
             mService = null;
         }
-        super.onPause();
+        mBinding = null;
+        super.onDestroy();
     }
 
     @Override

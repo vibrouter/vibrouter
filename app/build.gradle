@@ -1,8 +1,12 @@
 apply plugin: 'com.android.application'
+apply plugin: 'deploygate'
 
 android {
     compileSdkVersion 25
     buildToolsVersion "25.0.2"
+    dataBinding {
+        enabled = true
+    }
     defaultConfig {
         applicationId "io.github.vibrouter"
         minSdkVersion 15
@@ -11,19 +15,82 @@ android {
         versionName "0.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
-    buildTypes {
+    signingConfigs {
+        debug {
+            storeFile = file("${rootProject.rootDir}/debug.keystore")
+            storePassword = 'debugkey'
+            keyAlias = 'debugkey'
+            keyPassword = 'debugkey'
+        }
         release {
+            def releaseKeystoreFile = new File("${rootProject.rootDir}/release.keystore")
+            if (releaseKeystoreFile.exists()) {
+                def keystoreProperties = new Properties()
+                keystoreProperties.load(new FileInputStream(releaseKeystoreFile))
+                storeFile = keystoreProperties['storeFile']
+                storePassword = keystoreProperties['storePassword']
+                keyAlias = keystoreProperties['keyAlias']
+                keyPassword = keystoreProperties['keyPassword']
+            } else {
+                storeFile = debug.storeFile
+                storePassword = debug.storePassword
+                keyAlias = debug.keyAlias
+                keyPassword = debug.keyPassword
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            // Write debug settings here
+            applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.debug
+        }
+        release {
+            applicationIdSuffix = ".release"
+            signingConfig = signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    dexOptions {
+        javaMaxHeapSize "4g" //specify the heap size for the dex process
+    }
+}
+
+deploygate {
+    if (project.rootProject.file('local.properties').exists()) {
+        // For local build
+        Properties properties = new Properties()
+        properties.load(project.rootProject.file('local.properties').newDataInputStream())
+        userName = properties.getProperty('deploygate.username')
+        token = properties.getProperty('deploygate.token')
+    } else {
+        // For travis ci
+        userName = "${System.env.DEPLOYGATE_USERNAME}"
+        token = "${System.env.DEPLOYGATE_TOKEN}"
+    }
+
+    apks {
+        debug {
+            sourceFile = file("./build/outputs/apk/app-debug.apk")
+            message = "Debug build apk"
         }
     }
 }
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
+
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
+
+    compile 'com.android.volley:volley:1.0.0'
     compile 'com.android.support:appcompat-v7:25.2.0'
+    compile 'com.android.support:design:25.2.0'
+    compile 'com.google.android.gms:play-services-maps:10.2.0'
+    compile 'com.google.android.gms:play-services-location:10.2.0'
+    compile 'com.google.code.gson:gson:2.4'
+
     testCompile 'junit:junit:4.12'
 }

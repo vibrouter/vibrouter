@@ -1,3 +1,27 @@
 <resources>
     <string name="app_name">VibRouter</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
+
+    <!-- Menu -->
+    <string name="start_chronometer">Start chronometer</string>
+    <string name="stop_chronometer">Stop chronometer</string>
+    <string name="start_navigation">Start navigation</string>
+    <string name="stop_navigation">Stop navigation</string>
+    <string name="goto_current_position">Go to current position</string>
+    <string name="enable_camera_position_reset">Enable camera position reset</string>
+    <string name="disable_camera_position_reset">Disable camera position reset</string>
+
+    <!-- Hackday titles -->
+    <string name="designer">Akihisa Fukuoka</string>
+    <string name="engineer">Yu Ishihara</string>
+    <string name="creators">Akihisa Fukuoka and Yu Ishihara</string>
+    <string name="hackday_title">Hack Day 2017</string>
+
+    <!-- Alert messages -->
+    <string name="alert_title">"Destination is not set"</string>
+    <string name="alert_body">"Please set destination to start navigation"</string>
 </resources>

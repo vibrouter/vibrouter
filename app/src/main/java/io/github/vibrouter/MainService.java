@@ -36,19 +36,19 @@ import java.util.Collections;
 import java.util.List;
 
 public class MainService extends Service {
-    interface CurrentLocationListener {
+    public interface CurrentLocationListener {
         void onLocationChanged(LatLng location);
 
         void onRotationChanged(double rotation);
     }
 
-    interface RouteSearchFinishCallback {
+    public interface RouteSearchFinishCallback {
         void onRouteSearchFinish(List<LatLng> fromCurrentWayPoint,
                                  List<LatLng> trainWayPoint,
                                  List<LatLng> toDestinationWayPoint);
     }
 
-    interface NavigationStatusListener {
+    public interface NavigationStatusListener {
         int NAVIGATING_FORWARD = 0;
         int NAVIGATING_LEFT = -1;
         int NAVIGATING_RIGHT = 1;

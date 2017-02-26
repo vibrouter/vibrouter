@@ -71,12 +71,16 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     private MainService.CurrentLocationListener mCurrentLocationListener = new MainService.CurrentLocationListener() {
         @Override
         public void onLocationChanged(LatLng location) {
-            setOrigin(location);
+            if (isMapReady()) {
+                setOrigin(location);
+            }
         }
 
         @Override
         public void onRotationChanged(double rotation) {
-            setRotation(rotation);
+            if (isMapReady()) {
+                setRotation(rotation);
+            }
         }
     };
 
@@ -135,6 +139,10 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
 
         mMap.setIndoorEnabled(true);
         mMap.setOnMapClickListener(mMapClickListener);
+    }
+
+    private boolean isMapReady() {
+        return mMap != null;
     }
 
     private void createMap() {

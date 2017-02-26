@@ -303,15 +303,15 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
 
     private int selectBannerToDisplay(int direction, boolean arrived) {
         if (arrived) {
-            return R.mipmap.goal;
+            return R.drawable.banner_goal;
         }
         switch (direction) {
             case MainService.NavigationStatusListener.NAVIGATING_FORWARD:
-                return R.mipmap.forward;
+                return R.drawable.banner_forward;
             case MainService.NavigationStatusListener.NAVIGATING_LEFT:
-                return R.mipmap.left;
+                return R.drawable.banner_left;
             case MainService.NavigationStatusListener.NAVIGATING_RIGHT:
-                return R.mipmap.right;
+                return R.drawable.banner_right;
             default:
                 return -1;
         }

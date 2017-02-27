@@ -100,14 +100,10 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     private MainService.CurrentLocationListener mCurrentLocationListener = new MainService.CurrentLocationListener() {
         @Override
         public void onLocationChanged(LatLng location) {
-            Log.i(TAG, "onLocationChanged");
             if (isMapReady()) {
-                Log.i(TAG, "setOrigin!!");
                 setOrigin(location);
-            } else {
-                Log.i(TAG, "Map is not ready!!");
             }
-        }
+:       }
 
         @Override
         public void onRotationChanged(double rotation) {
@@ -138,7 +134,6 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     @Override
     public void onResume() {
         super.onResume();
-        Log.i(TAG, "onResume");
         if (hasPermissionGranted()) {
             Intent intent = new Intent(this.getContext(), MainService.class);
             getActivity().bindService(intent, mServiceConnection, BIND_AUTO_CREATE);
@@ -150,10 +145,6 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
 
     @Override
     public void onPause() {
-        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
-            Log.i(TAG, "stack trace: " + element.toString());
-        }
-        Log.i(TAG, "onPause. ");
         if (mService != null) {
             if (!mService.isNavigating()) {
                 mService.stopSamplingSensors();

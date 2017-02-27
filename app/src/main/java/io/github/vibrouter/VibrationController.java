@@ -13,10 +13,6 @@ import java.util.List;
 
 import static android.content.Context.VIBRATOR_SERVICE;
 
-/**
- * Created by yuishihara on 2017/02/04.
- */
-
 public class VibrationController {
     public static final int PATTERN_FORWARD = 0;
     public static final int PATTERN_LEFT = 1;

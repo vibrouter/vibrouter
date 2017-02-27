@@ -256,7 +256,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     }
 
     private float initialZoom() {
-        final float ZOOM = 16f;
+        final float ZOOM = getResources().getInteger(R.integer.map_default_zoom);
         if (ZOOM < mMap.getMinZoomLevel()) {
             return mMap.getMinZoomLevel();
         } else if (mMap.getMaxZoomLevel() < ZOOM) {

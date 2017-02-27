@@ -3,7 +3,6 @@ package io.github.vibrouter.fragments;
 import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.databinding.DataBindingUtil;
@@ -103,7 +102,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
             if (isMapReady()) {
                 setOrigin(location);
             }
-:       }
+        }
 
         @Override
         public void onRotationChanged(double rotation) {
@@ -218,11 +217,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
             new AlertDialog.Builder(this.getContext())
                     .setTitle(getResources().getString(R.string.alert_title))
                     .setMessage(getResources().getString(R.string.alert_body))
-                    .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-                            // continue with delete
-                        }
-                    })
+                    .setPositiveButton(android.R.string.yes, null)
                     .setIcon(android.R.drawable.ic_dialog_alert)
                     .show();
             return;
@@ -311,15 +306,6 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         mDestinationMarker = mMap.addMarker(markerOptions);
     }
 
-    void resetCameraPosition() {
-        if (mCurrentLocationMarker == null) {
-            return;
-        }
-        CameraPosition cameraPosition = new CameraPosition.Builder()
-                .target(mCurrentLocationMarker.getPosition()).zoom(initialZoom()).build();
-        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
-    }
-
     private void setRotation(double rotation) {
         if (mCurrentLocationMarker == null) {
             return;
@@ -328,10 +314,11 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     }
 
     private void clearLocation() {
-        if (mCurrentLocationMarker != null) {
-            mCurrentLocationMarker.remove();
-            mCurrentLocationMarker = null;
+        if (mCurrentLocationMarker == null) {
+            return;
         }
+        mCurrentLocationMarker.remove();
+        mCurrentLocationMarker = null;
     }
 
     private void toggleNavigation() {
@@ -339,7 +326,6 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
             return;
         }
         if (mService.isNavigating()) {
-            removeBanner();
             stopNavigation();
         } else {
             startNavigation();

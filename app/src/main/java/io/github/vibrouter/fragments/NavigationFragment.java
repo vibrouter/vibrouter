@@ -1,12 +1,20 @@
 package io.github.vibrouter.fragments;
 
+import android.Manifest;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.databinding.DataBindingUtil;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.PermissionChecker;
 import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -29,10 +37,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import io.github.vibrouter.BaseActivity;
 import io.github.vibrouter.MainService;
 import io.github.vibrouter.R;
 import io.github.vibrouter.databinding.FragmentNavigationBinding;
+
+import static android.content.Context.BIND_AUTO_CREATE;
 
 public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     private static final String TAG = NavigationFragment.class.getSimpleName();
@@ -40,8 +49,13 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     private static final String CURRENT_LOCATION_TITLE = "CurrentPosition";
     private static final String DESTINATION_LOCATION_TITLE = "DestinationPosition";
 
+    private static final int PERMISSION_REQUEST_CODE = 1;
+    private static final String[] REQUIRED_PERMISSIONS = {
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+    };
+
     private FragmentNavigationBinding mBinding;
-    private MainService mService;
 
     private Marker mCurrentLocationMarker;
     private Marker mDestinationMarker;
@@ -49,30 +63,49 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     private List<Polyline> mNavigationRoute = new ArrayList<>();
 
     private GoogleMap mMap;
+    private MainService mService;
+
+    private ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.i(TAG, "onServiceConnected");
+            mService = ((MainService.LocalBinder) service).getService();
+            mService.setLocationListener(mCurrentLocationListener);
+            mService.startSamplingSensors();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            mService = null;
+        }
+    };
 
     private GoogleMap.OnMapClickListener mMapClickListener = new GoogleMap.OnMapClickListener() {
         @Override
         public void onMapClick(LatLng latLng) {
-            if (mService != null) {
-                removeRoutes();
-                setDestination(latLng);
-                mService.setDestination(latLng, new MainService.RouteSearchFinishCallback() {
-                    @Override
-                    public void onRouteSearchFinish(List<LatLng> fromCurrentWayPoint, List<LatLng> trainWayPoint, List<LatLng> toDestinationWayPoint) {
-                        drawRoute(fromCurrentWayPoint);
-                        drawRoute(trainWayPoint);
-                        drawRoute(toDestinationWayPoint);
-                    }
-                });
+            if (mService == null) {
+                return;
             }
+            removeRoutes();
+            setDestination(latLng);
+            mService.setDestination(latLng, new MainService.RouteSearchFinishCallback() {
+                @Override
+                public void onRouteSearchFinish(List<LatLng> route) {
+                    drawRoute(route);
+                }
+            });
         }
     };
 
     private MainService.CurrentLocationListener mCurrentLocationListener = new MainService.CurrentLocationListener() {
         @Override
         public void onLocationChanged(LatLng location) {
+            Log.i(TAG, "onLocationChanged");
             if (isMapReady()) {
+                Log.i(TAG, "setOrigin!!");
                 setOrigin(location);
+            } else {
+                Log.i(TAG, "Map is not ready!!");
             }
         }
 
@@ -94,33 +127,70 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
                 toggleNavigation();
             }
         });
-        createMap();
         return mBinding.getRoot();
     }
 
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        mService = getBaseActivity().getService();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        mService.setLocationListener(mCurrentLocationListener);
+        Log.i(TAG, "onResume");
+        if (hasPermissionGranted()) {
+            Intent intent = new Intent(this.getContext(), MainService.class);
+            getActivity().bindService(intent, mServiceConnection, BIND_AUTO_CREATE);
+            createMap();
+        } else {
+            requestPermissions();
+        }
     }
 
     @Override
     public void onPause() {
-        mService.unsetLocationListener();
+        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+            Log.i(TAG, "stack trace: " + element.toString());
+        }
+        Log.i(TAG, "onPause. ");
+        if (mService != null) {
+            if (!mService.isNavigating()) {
+                mService.stopSamplingSensors();
+            }
+            mService.unsetLocationListener();
+            getActivity().unbindService(mServiceConnection);
+        }
+        mService = null;
         clearLocation();
         super.onPause();
     }
 
     @Override
     public void onDetach() {
-        mService = null;
         super.onDetach();
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (mMap != null) {
+            mMap.clear();
+        }
+        mMap = null;
+        super.onDestroyView();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSION_REQUEST_CODE:
+                if (0 < grantResults.length) {
+                    createMap();
+                }
+                break;
+            default:
+                break;
+        }
     }
 
     /**
@@ -134,9 +204,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
      */
     @Override
     public void onMapReady(GoogleMap googleMap) {
-        Log.i(TAG, "Map created!");
         mMap = googleMap;
-
         mMap.setIndoorEnabled(true);
         mMap.setOnMapClickListener(mMapClickListener);
     }
@@ -146,6 +214,9 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     }
 
     private void createMap() {
+        if (isMapReady()) {
+            return;
+        }
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
@@ -170,7 +241,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
             @Override
             public void currentDirection(int direction, boolean arrived) {
                 Log.i(TAG, "Navigation status. direction: " + direction + " arrived: " + arrived);
-                showBanner(selectBannerToDisplay(direction, arrived));
+                showBanner(selectBanner(direction, arrived));
             }
         });
     }
@@ -272,7 +343,10 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         }
     }
 
-    void toggleNavigation() {
+    private void toggleNavigation() {
+        if (mService == null) {
+            return;
+        }
         if (mService.isNavigating()) {
             removeBanner();
             stopNavigation();
@@ -297,11 +371,12 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     }
 
     private void removeBanner() {
+        mBinding.banner.setTag(null);
         mBinding.banner.setVisibility(View.INVISIBLE);
         mBinding.banner.setAlpha(0.0f);
     }
 
-    private int selectBannerToDisplay(int direction, boolean arrived) {
+    private int selectBanner(int direction, boolean arrived) {
         if (arrived) {
             return R.drawable.banner_goal;
         }
@@ -317,7 +392,20 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         }
     }
 
-    private BaseActivity getBaseActivity() {
-        return (BaseActivity) getActivity();
+    private boolean hasPermissionGranted() {
+        for (String permission : REQUIRED_PERMISSIONS) {
+            if (PermissionChecker.checkSelfPermission(this.getContext(), permission)
+                    == PermissionChecker.PERMISSION_DENIED) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void requestPermissions() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return;
+        }
+        requestPermissions(REQUIRED_PERMISSIONS, PERMISSION_REQUEST_CODE);
     }
 }

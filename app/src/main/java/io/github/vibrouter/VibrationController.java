@@ -75,6 +75,7 @@ public class VibrationController {
     }
 
     public void stopVibrate() {
+        mState = NONE;
         mVibrator.cancel();
     }
 

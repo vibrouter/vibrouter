@@ -133,13 +133,13 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     @Override
     public void onResume() {
         super.onResume();
-        if (hasPermissionGranted()) {
-            Intent intent = new Intent(this.getContext(), MainService.class);
-            getActivity().bindService(intent, mServiceConnection, BIND_AUTO_CREATE);
-            createMap();
-        } else {
+        if (!hasPermissionGranted()) {
             requestPermissions();
+            return;
         }
+        Intent intent = new Intent(this.getContext(), MainService.class);
+        getActivity().bindService(intent, mServiceConnection, BIND_AUTO_CREATE);
+        createMap();
     }
 
     @Override
@@ -150,8 +150,8 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
             }
             mService.unsetLocationListener();
             getActivity().unbindService(mServiceConnection);
+            mService = null;
         }
-        mService = null;
         clearLocation();
         super.onPause();
     }

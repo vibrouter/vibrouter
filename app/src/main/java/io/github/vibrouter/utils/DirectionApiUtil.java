@@ -7,37 +7,38 @@ import java.util.List;
 
 public class DirectionApiUtil {
     public static List<LatLng> decodePolyline(String encoded) {
-        List<LatLng> poly = new ArrayList<>();
-        int index = 0;
-        int lat = 0;
-        int lng = 0;
+        StringBuffer buffer = new StringBuffer(encoded);
+        List<LatLng> polyline = new ArrayList<>();
 
-        while (index < encoded.length()) {
-            int b, shift = 0, result = 0;
-            do {
-                b = encoded.charAt(index++) - 63;
-                result |= (b & 0x1f) << shift;
-                shift += 5;
-            } while (b >= 0x20);
-
-            int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-            lat += dlat;
-
-            shift = 0;
-            result = 0;
-            do {
-                b = encoded.charAt(index++) - 63;
-                result |= (b & 0x1f) << shift;
-                shift += 5;
-            } while (b >= 0x20);
-
-            int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-            lng += dlng;
-
-            LatLng p = new LatLng((((double) lat / 1E5)), (((double) lng / 1E5)));
-            poly.add(p);
+        LatLng previous = new LatLng(0, 0);
+        while (0 < buffer.length()) {
+            // Diff from previous point is encoded.
+            LatLng diff = decodeLatLng(buffer);
+            LatLng location = new LatLng(diff.latitude + previous.latitude,
+                    diff.longitude + previous.longitude);
+            polyline.add(location);
+            previous = location;
         }
 
-        return poly;
+        return polyline;
+    }
+
+    private static LatLng decodeLatLng(StringBuffer buffer) {
+        int lat = decodeValue(buffer);
+        int lng = decodeValue(buffer);
+        return new LatLng((((double) lat / 1E5)), (((double) lng / 1E5)));
+    }
+
+    private static int decodeValue(StringBuffer buffer) {
+        int binary;
+        int shift = 0;
+        int result = 0;
+        do {
+            binary = buffer.charAt(0) - 63;
+            buffer = buffer.deleteCharAt(0);
+            result |= (binary & 0x1f) << shift;
+            shift += 5;
+        } while (binary >= 0x20);
+        return ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
     }
 }

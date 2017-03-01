@@ -86,7 +86,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
                 return;
             }
             removeRoutes();
-            setDestination(latLng);
+            markDestination(latLng);
             mService.setDestination(latLng, new MainService.RouteSearchFinishCallback() {
                 @Override
                 public void onRouteSearchFinish(List<LatLng> route) {
@@ -100,14 +100,14 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         @Override
         public void onLocationChanged(LatLng location) {
             if (isMapReady()) {
-                setOrigin(location);
+                setCurrentPosition(location);
             }
         }
 
         @Override
         public void onRotationChanged(double rotation) {
             if (isMapReady()) {
-                setRotation(rotation);
+                setCurrentRotation(rotation);
             }
         }
     };
@@ -119,7 +119,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         mBinding.navigationButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                toggleNavigation();
+                toggleNavigationButton();
             }
         });
         return mBinding.getRoot();
@@ -152,7 +152,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
             getActivity().unbindService(mServiceConnection);
             mService = null;
         }
-        clearLocation();
+        removeCurrentLocationMarker();
         super.onPause();
     }
 
@@ -276,9 +276,21 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         mNavigationRoute.add(mMap.addPolyline(options));
     }
 
-    private void setOrigin(LatLng position) {
+    private void markDestination(LatLng position) {
+        if (mDestinationMarker != null) {
+            mDestinationMarker.remove();
+        }
         MarkerOptions markerOptions = new MarkerOptions();
-        // zoom to current position:
+        markerOptions.position(position);
+        markerOptions.title(DESTINATION_LOCATION_TITLE);
+        markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
+        markerOptions.anchor(0.5f, 0.5f);
+        mDestinationMarker = mMap.addMarker(markerOptions);
+    }
+
+    private void setCurrentPosition(LatLng position) {
+        MarkerOptions markerOptions = new MarkerOptions();
+        // zoom to current position on initialization
         if (mCurrentLocationMarker == null) {
             markerOptions.position(position);
             markerOptions.title(CURRENT_LOCATION_TITLE);
@@ -294,26 +306,14 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         }
     }
 
-    private void setDestination(LatLng position) {
-        if (mDestinationMarker != null) {
-            mDestinationMarker.remove();
-        }
-        MarkerOptions markerOptions = new MarkerOptions();
-        markerOptions.position(position);
-        markerOptions.title(DESTINATION_LOCATION_TITLE);
-        markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
-        markerOptions.anchor(0.5f, 0.5f);
-        mDestinationMarker = mMap.addMarker(markerOptions);
-    }
-
-    private void setRotation(double rotation) {
+    private void setCurrentRotation(double rotation) {
         if (mCurrentLocationMarker == null) {
             return;
         }
         mCurrentLocationMarker.setRotation((float) rotation);
     }
 
-    private void clearLocation() {
+    private void removeCurrentLocationMarker() {
         if (mCurrentLocationMarker == null) {
             return;
         }
@@ -321,7 +321,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         mCurrentLocationMarker = null;
     }
 
-    private void toggleNavigation() {
+    private void toggleNavigationButton() {
         if (mService == null) {
             return;
         }

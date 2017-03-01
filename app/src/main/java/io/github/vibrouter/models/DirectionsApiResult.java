@@ -1,4 +1,4 @@
-package io.github.vibrouter;
+package io.github.vibrouter.models;
 
 import com.google.android.gms.maps.model.LatLng;
 

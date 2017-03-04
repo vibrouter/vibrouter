@@ -1,5 +1,6 @@
 [![Master Build Status](https://travis-ci.org/vibrouter/vibrouter.svg?branch=master)](https://travis-ci.org/vibrouter/vibrouter)
 [![Develop Build Status](https://travis-ci.org/vibrouter/vibrouter.svg?branch=develop)](https://travis-ci.org/vibrouter/vibrouter)
+[![Coverage Status](https://coveralls.io/repos/github/vibrouter/vibrouter/badge.svg?branch=develop)](https://coveralls.io/github/vibrouter/vibrouter?branch=develop)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 # About

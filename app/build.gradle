@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'com.github.kt3k.coveralls'
 apply plugin: 'deploygate'
 
 android {
@@ -44,12 +45,14 @@ android {
             // Write debug settings here
             applicationIdSuffix = ".debug"
             signingConfig = signingConfigs.debug
+            testCoverageEnabled true
         }
         release {
             applicationIdSuffix = ".release"
             signingConfig = signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            testCoverageEnabled false
         }
     }
     dexOptions {
@@ -75,6 +78,18 @@ deploygate {
             sourceFile = file("./build/outputs/apk/app-debug.apk")
             message = "Debug build apk"
         }
+    }
+}
+
+coveralls {
+    jacocoReportPath = "${buildDir}/reports/coverage/debug/report.xml"
+}
+
+tasks.coveralls {
+    dependsOn 'connectedAndroidTest'
+    onlyIf {
+        // Variable CI will be true on travis CI
+        System.env.'CI'
     }
 }
 

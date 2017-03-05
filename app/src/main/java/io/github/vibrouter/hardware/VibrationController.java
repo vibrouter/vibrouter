@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import io.github.vibrouter.utils.JavaIoUtil;
+
 import static android.content.Context.VIBRATOR_SERVICE;
 
 public class VibrationController {
@@ -96,20 +98,8 @@ public class VibrationController {
             // Do nothing
             Log.e(TAG, "Failed reading file");
         } finally {
-            try {
-                if (reader != null) {
-                    reader.close();
-                }
-            } catch (IOException failedClosing) {
-                // Do nothing
-            }
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-            } catch (IOException failedClosingStream) {
-                // Do nothing
-            }
+            JavaIoUtil.close(reader);
+            JavaIoUtil.close(inputStream);
         }
         return new long[0];
     }

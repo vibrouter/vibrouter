@@ -1,4 +1,4 @@
-package io.github.vibrouter;
+package io.github.vibrouter.managers;
 
 import android.app.Service;
 import android.content.Context;
@@ -35,20 +35,22 @@ import com.google.gson.GsonBuilder;
 import java.util.Collections;
 import java.util.List;
 
+import io.github.vibrouter.hardware.VibrationController;
+import io.github.vibrouter.models.DirectionsApiResult;
+import io.github.vibrouter.utils.GpsUtil;
+
 public class MainService extends Service {
-    interface CurrentLocationListener {
+    public interface CurrentLocationListener {
         void onLocationChanged(LatLng location);
 
         void onRotationChanged(double rotation);
     }
 
-    interface RouteSearchFinishCallback {
-        void onRouteSearchFinish(List<LatLng> fromCurrentWayPoint,
-                                 List<LatLng> trainWayPoint,
-                                 List<LatLng> toDestinationWayPoint);
+    public interface RouteSearchFinishCallback {
+        void onRouteSearchFinish(List<LatLng> route);
     }
 
-    interface NavigationStatusListener {
+    public interface NavigationStatusListener {
         int NAVIGATING_FORWARD = 0;
         int NAVIGATING_LEFT = -1;
         int NAVIGATING_RIGHT = 1;
@@ -62,7 +64,6 @@ public class MainService extends Service {
     private final IBinder mBinder = new LocalBinder();
 
     private SensorManager mSensorManager;
-    private Sensor mRotationSensor;
     private float[] mRotationVectorReading = new float[3];
     private final float[] mRotationMatrix = new float[9];
 
@@ -174,7 +175,7 @@ public class MainService extends Service {
     };
 
     public class LocalBinder extends Binder {
-        MainService getService() {
+        public MainService getService() {
             // Return this instance of LocalService so clients can call public methods
             return MainService.this;
         }
@@ -185,25 +186,12 @@ public class MainService extends Service {
         super.onCreate();
         mRequestQueue = Volley.newRequestQueue(this);
         mVibrationController = new VibrationController(this);
-        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        mRotationSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-        startSamplingSensors();
-        mApiClient = new GoogleApiClient.Builder(this)
-                .addApi(LocationServices.API)
-                .addConnectionCallbacks(mConnectionCallback)
-                .addOnConnectionFailedListener(mConnectionFailedListener)
-                .build();
-        mApiClient.connect();
+
     }
 
     @Override
     public void onDestroy() {
         stopSamplingSensors();
-        if (mApiClient != null) {
-            if (mApiClient.isConnected()) {
-                mApiClient.disconnect();
-            }
-        }
         super.onDestroy();
     }
 
@@ -248,12 +236,41 @@ public class MainService extends Service {
                 && (mDestinationLocation != null);
     }
 
+    public void startSamplingSensors() {
+        stopSamplingSensors();
+
+        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        Sensor rotationSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        mSensorManager.registerListener(mLocationSensorListener, rotationSensor, SensorManager.SENSOR_DELAY_UI);
+
+        mApiClient = new GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(mConnectionCallback)
+                .addOnConnectionFailedListener(mConnectionFailedListener)
+                .build();
+        mApiClient.connect();
+    }
+
+    public void stopSamplingSensors() {
+        if (mSensorManager != null) {
+            mSensorManager.unregisterListener(mLocationSensorListener);
+            mSensorManager = null;
+        }
+        if (mApiClient != null) {
+            mApiClient.unregisterConnectionCallbacks(mConnectionCallback);
+            if (mApiClient.isConnected()) {
+                mApiClient.disconnect();
+            }
+            mApiClient = null;
+        }
+    }
+
     private void getRoute(LatLng origin, LatLng destination, final RouteSearchFinishCallback callback) {
         if (origin == null || destination == null) {
             new Handler().post(new Runnable() {
                 @Override
                 public void run() {
-                    callback.onRouteSearchFinish(null, null, null);
+                    callback.onRouteSearchFinish(null);
                 }
             });
             return;
@@ -270,7 +287,7 @@ public class MainService extends Service {
             public void onResponse(String response) {
                 DirectionsApiResult result = mGson.fromJson(response, DirectionsApiResult.class);
                 if (callback != null) {
-                    callback.onRouteSearchFinish(result.getWaypoints(), null, null);
+                    callback.onRouteSearchFinish(result.getWaypoints());
                     mRouteWayPoints.setFromCurrentWayPoints(result.getWaypoints());
                 }
             }
@@ -299,14 +316,6 @@ public class MainService extends Service {
             }
         });
         mRequestQueue.add(request);
-    }
-
-    private void startSamplingSensors() {
-        mSensorManager.registerListener(mLocationSensorListener, mRotationSensor, SensorManager.SENSOR_DELAY_UI);
-    }
-
-    private void stopSamplingSensors() {
-        mSensorManager.unregisterListener(mLocationSensorListener);
     }
 
     private void startLocationUpdate() {

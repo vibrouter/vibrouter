@@ -9,6 +9,11 @@
         android:layout_height="match_parent"
         tools:openDrawer="start">
 
+        <RelativeLayout
+            android:id="@+id/fragment_container"
+            android:layout_height="match_parent"
+            android:layout_width="match_parent"/>
+
         <include
             android:id="@+id/content_main"
             layout="@layout/content_main"

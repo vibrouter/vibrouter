@@ -12,14 +12,8 @@ public class MainActivity extends BaseActivity {
 
         switch (id) {
             case R.id.start_stop_navigation:
-                toggleNavigation(item);
-                break;
             case R.id.go_to_current_position:
-                resetCameraPosition();
-                break;
             case R.id.enable_camera_reset:
-                toggleCameraReset(item);
-                break;
             case R.id.nav_share:
             case R.id.nav_send:
             default:

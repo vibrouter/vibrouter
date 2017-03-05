@@ -34,7 +34,7 @@
         </activity>
 
         <service
-            android:name=".MainService"
+            android:name=".managers.MainService"
             android:exported="false" />
     </application>
 

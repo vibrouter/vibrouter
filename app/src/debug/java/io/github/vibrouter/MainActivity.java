@@ -29,15 +29,6 @@ public class MainActivity extends BaseActivity {
             case R.id.start_stop_chronometer:
                 toggleChronometer(item);
                 break;
-            case R.id.start_stop_navigation:
-                toggleNavigation(item);
-                break;
-            case R.id.go_to_current_position:
-                resetCameraPosition();
-                break;
-            case R.id.enable_camera_reset:
-                toggleCameraReset(item);
-                break;
             case R.id.nav_share:
             case R.id.nav_send:
             default:

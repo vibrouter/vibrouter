@@ -5,9 +5,9 @@
     <color name="colorAccent">#FF4081</color>
 
     <!-- Drawer colors -->
-    <color name="colorDrawerStart">#9CE6FF</color>
-    <color name="colorDrawerMiddle">#52BDE3</color>
-    <color name="colorDrawerEnd">#0090C4</color>
+    <color name="colorBlueLight">#9CE6FF</color>
+    <color name="colorBlueMiddle">#52BDE3</color>
+    <color name="colorBlueDark">#0090C4</color>
 
     <!-- Polyline colors -->
     <color name="colorPolyline">#2BB0E0</color>

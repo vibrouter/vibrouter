@@ -1,4 +1,4 @@
-package io.github.vibrouter;
+package io.github.vibrouter.hardware;
 
 import android.content.Context;
 import android.os.Vibrator;
@@ -9,13 +9,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import static android.content.Context.VIBRATOR_SERVICE;
+import io.github.vibrouter.utils.JavaIoUtil;
 
-/**
- * Created by yuishihara on 2017/02/04.
- */
+import static android.content.Context.VIBRATOR_SERVICE;
 
 public class VibrationController {
     public static final int PATTERN_FORWARD = 0;
@@ -75,6 +74,7 @@ public class VibrationController {
     }
 
     public void stopVibrate() {
+        mState = NONE;
         mVibrator.cancel();
     }
 
@@ -86,36 +86,20 @@ public class VibrationController {
             reader = new BufferedReader(new InputStreamReader(inputStream));
             String line;
             List<String> timeMillis = new ArrayList<>();
-            Log.e(TAG, "Reading file!");
             while ((line = reader.readLine()) != null) {
-                for (String millis : line.split(",")) {
-                    timeMillis.add(millis);
-                }
+                Collections.addAll(timeMillis, line.split(","));
             }
             long[] pattern = new long[timeMillis.size()];
             for (int i = 0; i < timeMillis.size(); ++i) {
                 pattern[i] = Integer.parseInt(timeMillis.get(i));
             }
-            Log.e(TAG, "pattern of " + fileName + " read!");
             return pattern;
         } catch (IOException failedReading) {
             // Do nothing
             Log.e(TAG, "Failed reading file");
         } finally {
-            try {
-                if (reader != null) {
-                    reader.close();
-                }
-            } catch (IOException failedClosing) {
-                // Do nothing
-            }
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-            } catch (IOException failedClosingStream) {
-                // Do nothing
-            }
+            JavaIoUtil.close(reader);
+            JavaIoUtil.close(inputStream);
         }
         return new long[0];
     }

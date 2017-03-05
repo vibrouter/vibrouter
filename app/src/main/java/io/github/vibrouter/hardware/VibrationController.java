@@ -1,4 +1,4 @@
-package io.github.vibrouter;
+package io.github.vibrouter.hardware;
 
 import android.content.Context;
 import android.os.Vibrator;

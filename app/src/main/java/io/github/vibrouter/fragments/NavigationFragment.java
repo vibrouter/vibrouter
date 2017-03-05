@@ -39,6 +39,7 @@ import java.util.List;
 import io.github.vibrouter.managers.MainService;
 import io.github.vibrouter.R;
 import io.github.vibrouter.databinding.FragmentNavigationBinding;
+import io.github.vibrouter.models.Coordinate;
 import io.github.vibrouter.network.RouteFinder;
 
 import static android.content.Context.BIND_AUTO_CREATE;
@@ -70,7 +71,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         public void onServiceConnected(ComponentName name, IBinder service) {
             Log.i(TAG, "onServiceConnected");
             mService = ((MainService.LocalBinder) service).getService();
-            mService.setLocationListener(mCurrentLocationListener);
+            mService.setPositionListener(mCurrentPositionListener);
             mService.startSamplingSensors();
         }
 
@@ -97,21 +98,16 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         }
     };
 
-    private MainService.CurrentLocationListener mCurrentLocationListener = new MainService.CurrentLocationListener() {
+    private MainService.CurrentPositionListener mCurrentPositionListener = new MainService.CurrentPositionListener() {
         @Override
-        public void onLocationChanged(LatLng location) {
-            if (isMapReady()) {
-                setCurrentPosition(location);
+        public void onPositionChanged(Coordinate position) {
+            if (!isMapReady()) {
+                return;
             }
-        }
-
-        @Override
-        public void onRotationChanged(double rotation) {
-            if (isMapReady()) {
-                setCurrentRotation(rotation);
-            }
+            setCurrentPosition(position);
         }
     };
+
 
     @Nullable
     @Override
@@ -149,7 +145,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
             if (!mService.isNavigating()) {
                 mService.stopSamplingSensors();
             }
-            mService.unsetLocationListener();
+            mService.unsetPositionListener();
             getActivity().unbindService(mServiceConnection);
             mService = null;
         }
@@ -289,29 +285,25 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         mDestinationMarker = mMap.addMarker(markerOptions);
     }
 
-    private void setCurrentPosition(LatLng position) {
+    private void setCurrentPosition(Coordinate position) {
+        LatLng location = position.getLocation();
+        double rotation = position.getRotation();
         MarkerOptions markerOptions = new MarkerOptions();
         // zoom to current position on initialization
         if (mCurrentLocationMarker == null) {
-            markerOptions.position(position);
+            markerOptions.position(location);
             markerOptions.title(CURRENT_LOCATION_TITLE);
             markerOptions.icon(BitmapDescriptorFactory.fromResource(R.mipmap.marker));
             markerOptions.anchor(0.5f, 0.5f);
 
             mCurrentLocationMarker = mMap.addMarker(markerOptions);
             CameraPosition cameraPosition = new CameraPosition.Builder()
-                    .target(position).zoom(initialZoom()).build();
+                    .target(location).zoom(initialZoom()).build();
             mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         } else {
-            mCurrentLocationMarker.setPosition(position);
+            mCurrentLocationMarker.setPosition(location);
+            mCurrentLocationMarker.setRotation((float) rotation);
         }
-    }
-
-    private void setCurrentRotation(double rotation) {
-        if (mCurrentLocationMarker == null) {
-            return;
-        }
-        mCurrentLocationMarker.setRotation((float) rotation);
     }
 
     private void removeCurrentLocationMarker() {

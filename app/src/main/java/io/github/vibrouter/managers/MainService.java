@@ -12,18 +12,15 @@ import com.google.android.gms.maps.model.LatLng;
 import java.util.Collections;
 import java.util.List;
 
-import io.github.vibrouter.hardware.RotationSensor;
-import io.github.vibrouter.hardware.SelfLocalizer;
 import io.github.vibrouter.hardware.VibrationController;
+import io.github.vibrouter.models.Coordinate;
 import io.github.vibrouter.network.DirectionsApi;
 import io.github.vibrouter.network.RouteFinder;
 import io.github.vibrouter.utils.GpsUtil;
 
 public class MainService extends Service {
-    public interface CurrentLocationListener {
-        void onLocationChanged(LatLng location);
-
-        void onRotationChanged(double rotation);
+    public interface CurrentPositionListener {
+        void onPositionChanged(Coordinate position);
     }
 
     public interface NavigationStatusListener {
@@ -39,13 +36,13 @@ public class MainService extends Service {
     // Binder given to clients
     private final IBinder mBinder = new LocalBinder();
 
-    private RotationSensor mRotationSensor;
-    private SelfLocalizer mLocalizer;
+    private PositionManager mPositionManager;
     private RouteFinder mRouteFinder;
 
     private LatLng mDestinationLocation;
-    private LatLng mCurrentLocation;
-    private double mCurrentRotation;
+
+    private Coordinate mCurrentPosition = Coordinate.INVALID_COORDINATE;
+
     private double mGoalDirection;
 
     private final double FORWARD_ERROR_THRESHOLD = 30; // deg
@@ -85,12 +82,12 @@ public class MainService extends Service {
 
     private Route mRouteWayPoints = new Route();
 
-    private CurrentLocationListener mCurrentLocationListener;
-    private RotationSensor.OnRotationChangeListener mOnRotationChangeListener = new RotationSensor.OnRotationChangeListener() {
+    private CurrentPositionListener mCurrentPositionListener;
+    private PositionManager.OnPositionChangeListener mOnPositionChangeListener = new PositionManager.OnPositionChangeListener() {
         @Override
-        public void onRotationChange(double newRotation) {
-            mCurrentRotation = newRotation;
-            announceNewRotation(newRotation);
+        public void onPositionChange(Coordinate position) {
+            mCurrentPosition = position;
+            announceNewPosition(position);
             if (isNavigating()) {
                 vibrateAndNavigateUser();
             } else {
@@ -98,15 +95,6 @@ public class MainService extends Service {
             }
         }
     };
-
-    private SelfLocalizer.OnLocationChangeListener mOnLocationChangeListener = new SelfLocalizer.OnLocationChangeListener() {
-        @Override
-        public void OnLocationChange(LatLng location) {
-            mCurrentLocation = location;
-            announceNewLocation(location);
-        }
-    };
-
 
     public class LocalBinder extends Binder {
         public MainService getService() {
@@ -118,6 +106,7 @@ public class MainService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        mPositionManager = new PositionManager(this);
         mRouteFinder = new DirectionsApi(this);
         mVibrationController = new VibrationController(this);
     }
@@ -152,50 +141,29 @@ public class MainService extends Service {
 
     public void setDestination(LatLng position, RouteFinder.OnRouteFoundCallback callback) {
         mDestinationLocation = position;
-        getRoute(mCurrentLocation, mDestinationLocation, callback);
+        getRoute(mCurrentPosition.getLocation(), mDestinationLocation, callback);
     }
 
-    public void setLocationListener(CurrentLocationListener listener) {
-        mCurrentLocationListener = listener;
+    public void setPositionListener(CurrentPositionListener listener) {
+        mCurrentPositionListener = listener;
     }
 
-    public void unsetLocationListener() {
-        mCurrentLocationListener = null;
+    public void unsetPositionListener() {
+        mCurrentPositionListener = null;
     }
 
     public boolean isNavigating() {
         return (mState == STATE_NAVIGATING)
-                && (mCurrentLocation != null)
+                && (mCurrentPosition.getLocation() != null)
                 && (mDestinationLocation != null);
     }
 
     public void startSamplingSensors() {
-        stopSamplingSensors();
-        if (mRotationSensor == null) {
-            mRotationSensor = new RotationSensor(this);
-            mRotationSensor.registerOnRotationChangeListener(mOnRotationChangeListener);
-            mRotationSensor.startUpdating();
-        }
-
-        if (mLocalizer == null) {
-            mLocalizer = new SelfLocalizer(this);
-            mLocalizer.registerOnLocationChangeListener(mOnLocationChangeListener);
-            mLocalizer.startUpdating();
-        }
+        mPositionManager.registerOnPositionChangeListener(mOnPositionChangeListener);
     }
 
     public void stopSamplingSensors() {
-        if (mRotationSensor != null) {
-            mRotationSensor.unregisterOnRotationChangeListener(mOnRotationChangeListener);
-            mRotationSensor.stopUpdating();
-            mRotationSensor = null;
-        }
-
-        if (mLocalizer != null) {
-            mLocalizer.unregisterOnLocationChangeListener(mOnLocationChangeListener);
-            mLocalizer.stopUpdating();
-            mLocalizer = null;
-        }
+        mPositionManager.unregisterOnPositionChangeListener(mOnPositionChangeListener);
     }
 
     private void getRoute(LatLng origin, LatLng destination, final RouteFinder.OnRouteFoundCallback callback) {
@@ -224,24 +192,19 @@ public class MainService extends Service {
         return diff;
     }
 
-    private void announceNewLocation(LatLng latLng) {
-        if (mCurrentLocationListener == null) {
+    private void announceNewPosition(Coordinate position) {
+        if (mCurrentPositionListener == null) {
             return;
         }
-        mCurrentLocationListener.onLocationChanged(latLng);
-    }
-
-    private void announceNewRotation(double rotation) {
-        if (mCurrentLocationListener == null) {
-            return;
-        }
-        mCurrentLocationListener.onRotationChanged(rotation);
+        mCurrentPositionListener.onPositionChanged(position);
     }
 
     private void vibrateAndNavigateUser() {
         Log.i(TAG, "vibrate and navigate user!!");
+        double currentRotation = mCurrentPosition.getRotation();
+        LatLng currentLocation = mCurrentPosition.getLocation();
         LatLng nextSubGoal = mRouteWayPoints.getNextWayPoint();
-        double distance = GpsUtil.computeDistanceBetween(mCurrentLocation, nextSubGoal);
+        double distance = GpsUtil.computeDistanceBetween(currentLocation, nextSubGoal);
         boolean arrived = (nextSubGoal == null)
                 || (nextSubGoal.equals(mDestinationLocation) && (distance < GOAL_DISTANCE_THRESHOLD));
 
@@ -256,8 +219,8 @@ public class MainService extends Service {
             mRouteWayPoints.removeWayPoint(nextSubGoal);
         }
 
-        double subGoalDirection = GpsUtil.computeGoalDirection(mCurrentLocation, nextSubGoal);
-        double error = computeOrientationError(mCurrentRotation, subGoalDirection);
+        double subGoalDirection = GpsUtil.computeGoalDirection(currentLocation, nextSubGoal);
+        double error = computeOrientationError(currentRotation, subGoalDirection);
         if (Math.abs(error) < FORWARD_ERROR_THRESHOLD) {
             mVibrationController.startVibrate(VibrationController.PATTERN_FORWARD);
             announceNavigationStatus(NavigationStatusListener.NAVIGATING_FORWARD, arrived);

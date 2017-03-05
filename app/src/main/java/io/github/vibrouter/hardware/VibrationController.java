@@ -84,7 +84,6 @@ public class VibrationController {
             reader = new BufferedReader(new InputStreamReader(inputStream));
             String line;
             List<String> timeMillis = new ArrayList<>();
-            Log.e(TAG, "Reading file!");
             while ((line = reader.readLine()) != null) {
                 Collections.addAll(timeMillis, line.split(","));
             }
@@ -92,7 +91,6 @@ public class VibrationController {
             for (int i = 0; i < timeMillis.size(); ++i) {
                 pattern[i] = Integer.parseInt(timeMillis.get(i));
             }
-            Log.e(TAG, "pattern of " + fileName + " read!");
             return pattern;
         } catch (IOException failedReading) {
             // Do nothing

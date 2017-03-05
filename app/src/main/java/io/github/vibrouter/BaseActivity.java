@@ -18,6 +18,7 @@ import android.view.WindowManager;
 
 import io.github.vibrouter.databinding.ActivityMainBinding;
 import io.github.vibrouter.fragments.NavigationFragment;
+import io.github.vibrouter.managers.MainService;
 
 public abstract class BaseActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {

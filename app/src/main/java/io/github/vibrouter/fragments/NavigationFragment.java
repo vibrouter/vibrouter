@@ -36,7 +36,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import io.github.vibrouter.MainService;
+import io.github.vibrouter.managers.MainService;
 import io.github.vibrouter.R;
 import io.github.vibrouter.databinding.FragmentNavigationBinding;
 

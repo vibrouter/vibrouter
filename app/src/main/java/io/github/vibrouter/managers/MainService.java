@@ -1,4 +1,4 @@
-package io.github.vibrouter;
+package io.github.vibrouter.managers;
 
 import android.app.Service;
 import android.content.Context;
@@ -35,6 +35,7 @@ import com.google.gson.GsonBuilder;
 import java.util.Collections;
 import java.util.List;
 
+import io.github.vibrouter.VibrationController;
 import io.github.vibrouter.models.DirectionsApiResult;
 import io.github.vibrouter.utils.GpsUtil;
 

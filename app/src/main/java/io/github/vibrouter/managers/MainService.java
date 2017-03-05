@@ -2,12 +2,9 @@ package io.github.vibrouter.managers;
 
 import android.app.Service;
 import android.content.Intent;
-import android.location.Location;
 import android.os.Binder;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
-import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
@@ -17,11 +14,6 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.LocationListener;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
@@ -31,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 
 import io.github.vibrouter.hardware.RotationSensor;
+import io.github.vibrouter.hardware.SelfLocalizer;
 import io.github.vibrouter.hardware.VibrationController;
 import io.github.vibrouter.models.DirectionsApiResult;
 import io.github.vibrouter.utils.GpsUtil;
@@ -60,8 +53,8 @@ public class MainService extends Service {
     private final IBinder mBinder = new LocalBinder();
 
     private RotationSensor mRotationSensor;
+    private SelfLocalizer mLocalizer;
 
-    private GoogleApiClient mApiClient;
     private LatLng mDestinationLocation;
     private LatLng mCurrentLocation;
     private double mCurrentRotation;
@@ -120,43 +113,15 @@ public class MainService extends Service {
         }
     };
 
+    private SelfLocalizer.OnLocationChangeListener mOnLocationChangeListener = new SelfLocalizer.OnLocationChangeListener() {
+        @Override
+        public void OnLocationChange(LatLng location) {
+            mCurrentLocation = location;
+            announceNewLocation(location);
+        }
+    };
+
     private RequestQueue mRequestQueue;
-
-    private GoogleApiClient.ConnectionCallbacks mConnectionCallback = new GoogleApiClient.ConnectionCallbacks() {
-        @Override
-        public void onConnected(@Nullable Bundle bundle) {
-            Log.i(TAG, "Connected to google api client!");
-            try {
-                Location location = LocationServices.FusedLocationApi.getLastLocation(mApiClient);
-                if (location != null) {
-                    updateCurrentLocation(new LatLng(location.getLatitude(), location.getLongitude()));
-                }
-            } catch (SecurityException failedGettingLocationServices) {
-                Log.e(TAG, "Could not obtain location services");
-                return;
-            }
-            startLocationUpdate();
-        }
-
-        @Override
-        public void onConnectionSuspended(int i) {
-
-        }
-    };
-
-    private GoogleApiClient.OnConnectionFailedListener mConnectionFailedListener = new GoogleApiClient.OnConnectionFailedListener() {
-        @Override
-        public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-            Log.e(TAG, "Failed connecting to google map api");
-        }
-    };
-
-    private LocationListener mLocationListener = new LocationListener() {
-        @Override
-        public void onLocationChanged(Location location) {
-            updateCurrentLocation(new LatLng(location.getLatitude(), location.getLongitude()));
-        }
-    };
 
     public class LocalBinder extends Binder {
         public MainService getService() {
@@ -170,7 +135,6 @@ public class MainService extends Service {
         super.onCreate();
         mRequestQueue = Volley.newRequestQueue(this);
         mVibrationController = new VibrationController(this);
-
     }
 
     @Override
@@ -228,12 +192,11 @@ public class MainService extends Service {
             mRotationSensor.startUpdating();
         }
 
-        mApiClient = new GoogleApiClient.Builder(this)
-                .addApi(LocationServices.API)
-                .addConnectionCallbacks(mConnectionCallback)
-                .addOnConnectionFailedListener(mConnectionFailedListener)
-                .build();
-        mApiClient.connect();
+        if (mLocalizer == null) {
+            mLocalizer = new SelfLocalizer(this);
+            mLocalizer.registerOnLocationChangeListener(mOnLocationChangeListener);
+            mLocalizer.startUpdating();
+        }
     }
 
     public void stopSamplingSensors() {
@@ -243,12 +206,10 @@ public class MainService extends Service {
             mRotationSensor = null;
         }
 
-        if (mApiClient != null) {
-            mApiClient.unregisterConnectionCallbacks(mConnectionCallback);
-            if (mApiClient.isConnected()) {
-                mApiClient.disconnect();
-            }
-            mApiClient = null;
+        if (mLocalizer != null) {
+            mLocalizer.unregisterOnLocationChangeListener(mOnLocationChangeListener);
+            mLocalizer.stopUpdating();
+            mLocalizer = null;
         }
     }
 
@@ -305,18 +266,6 @@ public class MainService extends Service {
         mRequestQueue.add(request);
     }
 
-    private void startLocationUpdate() {
-        final long INTERVAL_MILLIS = 1000;
-        LocationRequest request = new LocationRequest();
-        request.setInterval(INTERVAL_MILLIS);
-        request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        try {
-            LocationServices.FusedLocationApi.requestLocationUpdates(mApiClient, request, mLocationListener);
-        } catch (SecurityException noPermission) {
-            // TODO: handle permission errors
-        }
-    }
-
     private double computeOrientationError(double current, double goal) {
         return fitInRange(current - goal);
     }
@@ -330,11 +279,6 @@ public class MainService extends Service {
             }
         }
         return diff;
-    }
-
-    private void updateCurrentLocation(LatLng latLng) {
-        mCurrentLocation = latLng;
-        announceNewLocation(latLng);
     }
 
     private void announceNewLocation(LatLng latLng) {

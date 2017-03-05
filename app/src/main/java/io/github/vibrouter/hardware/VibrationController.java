@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static android.content.Context.VIBRATOR_SERVICE;
@@ -85,9 +86,7 @@ public class VibrationController {
             List<String> timeMillis = new ArrayList<>();
             Log.e(TAG, "Reading file!");
             while ((line = reader.readLine()) != null) {
-                for (String millis : line.split(",")) {
-                    timeMillis.add(millis);
-                }
+                Collections.addAll(timeMillis, line.split(","));
             }
             long[] pattern = new long[timeMillis.size()];
             for (int i = 0; i < timeMillis.size(); ++i) {

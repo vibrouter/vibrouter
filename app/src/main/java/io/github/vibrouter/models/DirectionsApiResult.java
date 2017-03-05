@@ -5,7 +5,7 @@ import com.google.android.gms.maps.model.LatLng;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.github.vibrouter.utils.DirectionApiUtil.decodePolyline;
+import static io.github.vibrouter.utils.DirectionsApiUtil.decodePolyline;
 
 public class DirectionsApiResult {
     public static class GeocodedWaypoint {

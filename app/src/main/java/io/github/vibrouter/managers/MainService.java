@@ -3,21 +3,11 @@ package io.github.vibrouter.managers;
 import android.app.Service;
 import android.content.Intent;
 import android.os.Binder;
-import android.os.Handler;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.gson.FieldNamingPolicy;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import java.util.Collections;
 import java.util.List;
@@ -25,7 +15,8 @@ import java.util.List;
 import io.github.vibrouter.hardware.RotationSensor;
 import io.github.vibrouter.hardware.SelfLocalizer;
 import io.github.vibrouter.hardware.VibrationController;
-import io.github.vibrouter.models.DirectionsApiResult;
+import io.github.vibrouter.network.DirectionsApi;
+import io.github.vibrouter.network.RouteFinder;
 import io.github.vibrouter.utils.GpsUtil;
 
 public class MainService extends Service {
@@ -33,10 +24,6 @@ public class MainService extends Service {
         void onLocationChanged(LatLng location);
 
         void onRotationChanged(double rotation);
-    }
-
-    public interface RouteSearchFinishCallback {
-        void onRouteSearchFinish(List<LatLng> route);
     }
 
     public interface NavigationStatusListener {
@@ -54,6 +41,7 @@ public class MainService extends Service {
 
     private RotationSensor mRotationSensor;
     private SelfLocalizer mLocalizer;
+    private RouteFinder mRouteFinder;
 
     private LatLng mDestinationLocation;
     private LatLng mCurrentLocation;
@@ -70,8 +58,6 @@ public class MainService extends Service {
     private int mState = STATE_IDLE;
 
     private NavigationStatusListener mNavigationListener;
-
-    private Gson mGson = new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).create();
 
     private static class Route {
         private List<LatLng> mFromCurrentWayPoints = Collections.emptyList();
@@ -121,7 +107,6 @@ public class MainService extends Service {
         }
     };
 
-    private RequestQueue mRequestQueue;
 
     public class LocalBinder extends Binder {
         public MainService getService() {
@@ -133,7 +118,7 @@ public class MainService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        mRequestQueue = Volley.newRequestQueue(this);
+        mRouteFinder = new DirectionsApi(this);
         mVibrationController = new VibrationController(this);
     }
 
@@ -165,7 +150,7 @@ public class MainService extends Service {
         mState = STATE_IDLE;
     }
 
-    public void setDestination(LatLng position, RouteSearchFinishCallback callback) {
+    public void setDestination(LatLng position, RouteFinder.OnRouteFoundCallback callback) {
         mDestinationLocation = position;
         getRoute(mCurrentLocation, mDestinationLocation, callback);
     }
@@ -213,57 +198,15 @@ public class MainService extends Service {
         }
     }
 
-    private void getRoute(LatLng origin, LatLng destination, final RouteSearchFinishCallback callback) {
-        if (origin == null || destination == null) {
-            new Handler().post(new Runnable() {
-                @Override
-                public void run() {
-                    callback.onRouteSearchFinish(null);
-                }
-            });
-            return;
-        }
-        mRequestQueue.cancelAll(new RequestQueue.RequestFilter() {
+    private void getRoute(LatLng origin, LatLng destination, final RouteFinder.OnRouteFoundCallback callback) {
+        mRouteFinder.findRoute(origin, destination, new RouteFinder.OnRouteFoundCallback() {
             @Override
-            public boolean apply(Request<?> request) {
-                return true;
+            public void onRouteFound(List<LatLng> route) {
+                mRouteWayPoints.setFromCurrentWayPoints(route);
+                callback.onRouteFound(route);
             }
         });
 
-        sendRouteSearchRequestBetween(origin, destination, new Response.Listener<String>() {
-            @Override
-            public void onResponse(String response) {
-                DirectionsApiResult result = mGson.fromJson(response, DirectionsApiResult.class);
-                if (callback != null) {
-                    callback.onRouteSearchFinish(result.getWaypoints());
-                    mRouteWayPoints.setFromCurrentWayPoints(result.getWaypoints());
-                }
-            }
-        });
-    }
-
-    private void sendRouteSearchRequestBetween(LatLng origin, LatLng destination, Response.Listener<String> listener) {
-        boolean useSensor = false;
-        String language = "ja";
-        String travelMode = "walking";
-
-        String parameters = String.format("origin=%s,%s&destination=%s,%s&sensor=%s&language=%s&mode=%s",
-                origin.latitude, origin.longitude,
-                destination.latitude, destination.longitude,
-                String.valueOf(useSensor),
-                language,
-                travelMode);
-
-        String output = "json";
-        String url = "https://maps.googleapis.com/maps/api/directions/" + output + "?" + parameters;
-
-        StringRequest request = new StringRequest(Request.Method.GET, url, listener, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-
-            }
-        });
-        mRequestQueue.add(request);
     }
 
     private double computeOrientationError(double current, double goal) {

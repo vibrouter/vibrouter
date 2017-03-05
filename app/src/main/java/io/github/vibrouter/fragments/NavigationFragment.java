@@ -39,6 +39,7 @@ import java.util.List;
 import io.github.vibrouter.managers.MainService;
 import io.github.vibrouter.R;
 import io.github.vibrouter.databinding.FragmentNavigationBinding;
+import io.github.vibrouter.network.RouteFinder;
 
 import static android.content.Context.BIND_AUTO_CREATE;
 
@@ -87,9 +88,9 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
             }
             removeRoutes();
             markDestination(latLng);
-            mService.setDestination(latLng, new MainService.RouteSearchFinishCallback() {
+            mService.setDestination(latLng, new RouteFinder.OnRouteFoundCallback() {
                 @Override
-                public void onRouteSearchFinish(List<LatLng> route) {
+                public void onRouteFound(List<LatLng> route) {
                     drawRoute(route);
                 }
             });

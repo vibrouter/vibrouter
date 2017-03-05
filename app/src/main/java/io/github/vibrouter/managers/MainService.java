@@ -1,12 +1,7 @@
 package io.github.vibrouter.managers;
 
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.location.Location;
 import android.os.Binder;
 import android.os.Bundle;
@@ -35,6 +30,7 @@ import com.google.gson.GsonBuilder;
 import java.util.Collections;
 import java.util.List;
 
+import io.github.vibrouter.hardware.RotationSensor;
 import io.github.vibrouter.hardware.VibrationController;
 import io.github.vibrouter.models.DirectionsApiResult;
 import io.github.vibrouter.utils.GpsUtil;
@@ -63,9 +59,7 @@ public class MainService extends Service {
     // Binder given to clients
     private final IBinder mBinder = new LocalBinder();
 
-    private SensorManager mSensorManager;
-    private float[] mRotationVectorReading = new float[3];
-    private final float[] mRotationMatrix = new float[9];
+    private RotationSensor mRotationSensor;
 
     private GoogleApiClient mApiClient;
     private LatLng mDestinationLocation;
@@ -113,30 +107,20 @@ public class MainService extends Service {
     private Route mRouteWayPoints = new Route();
 
     private CurrentLocationListener mCurrentLocationListener;
-
-    private RequestQueue mRequestQueue;
-
-    private SensorEventListener mLocationSensorListener = new SensorEventListener() {
+    private RotationSensor.OnRotationChangeListener mOnRotationChangeListener = new RotationSensor.OnRotationChangeListener() {
         @Override
-        public void onSensorChanged(SensorEvent event) {
-            if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
-                System.arraycopy(event.values, 0,
-                        mRotationVectorReading, 0, mRotationVectorReading.length);
-                mCurrentRotation = computeDeviceOrientation(mRotationVectorReading);
-                announceNewRotation(mCurrentRotation);
-                if (isNavigating()) {
-                    vibrateAndNavigateUser();
-                } else {
-                    mVibrationController.stopVibrate();
-                }
+        public void onRotationChange(double newRotation) {
+            mCurrentRotation = newRotation;
+            announceNewRotation(newRotation);
+            if (isNavigating()) {
+                vibrateAndNavigateUser();
+            } else {
+                mVibrationController.stopVibrate();
             }
         }
-
-        @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
-        }
     };
+
+    private RequestQueue mRequestQueue;
 
     private GoogleApiClient.ConnectionCallbacks mConnectionCallback = new GoogleApiClient.ConnectionCallbacks() {
         @Override
@@ -238,10 +222,11 @@ public class MainService extends Service {
 
     public void startSamplingSensors() {
         stopSamplingSensors();
-
-        mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        Sensor rotationSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-        mSensorManager.registerListener(mLocationSensorListener, rotationSensor, SensorManager.SENSOR_DELAY_UI);
+        if (mRotationSensor == null) {
+            mRotationSensor = new RotationSensor(this);
+            mRotationSensor.registerOnRotationChangeListener(mOnRotationChangeListener);
+            mRotationSensor.startUpdating();
+        }
 
         mApiClient = new GoogleApiClient.Builder(this)
                 .addApi(LocationServices.API)
@@ -252,10 +237,12 @@ public class MainService extends Service {
     }
 
     public void stopSamplingSensors() {
-        if (mSensorManager != null) {
-            mSensorManager.unregisterListener(mLocationSensorListener);
-            mSensorManager = null;
+        if (mRotationSensor != null) {
+            mRotationSensor.unregisterOnRotationChangeListener(mOnRotationChangeListener);
+            mRotationSensor.stopUpdating();
+            mRotationSensor = null;
         }
+
         if (mApiClient != null) {
             mApiClient.unregisterConnectionCallbacks(mConnectionCallback);
             if (mApiClient.isConnected()) {
@@ -334,18 +321,6 @@ public class MainService extends Service {
         return fitInRange(current - goal);
     }
 
-    private float computeDeviceOrientation(float[] values) {
-        final float[] orientationAngles = new float[3];
-        SensorManager.getRotationMatrixFromVector(mRotationMatrix, values);
-        SensorManager.getOrientation(mRotationMatrix, orientationAngles);
-        for (int i = 0; i < orientationAngles.length; ++i) {
-            orientationAngles[i] = (float) radianToDegrees(orientationAngles[i]);
-        }
-        // Log.d(TAG, String.format("Vector Azimuth %f [deg], Pitch %f [deg], Roll %f [deg]", orientationAngles[0], orientationAngles[1], orientationAngles[2]));
-
-        return orientationAngles[0];
-    }
-
     private double fitInRange(double diff) {
         while (180.0 < Math.abs(diff)) {
             if (diff < 0) {
@@ -355,18 +330,6 @@ public class MainService extends Service {
             }
         }
         return diff;
-    }
-
-    private double radianToDegrees(double radian) {
-        double degree = radian / 2.0 / Math.PI * 360.0;
-        while (degree < 0.0 || 360.0 < degree) {
-            if (degree < 0.0) {
-                degree += 360.0;
-            } else {
-                degree -= 360.0;
-            }
-        }
-        return degree;
     }
 
     private void updateCurrentLocation(LatLng latLng) {

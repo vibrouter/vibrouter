@@ -245,7 +245,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     }
 
     private void stopNavigation() {
-        mNavigator.stopNavigation();
+        mNavigator.pauseNavigation();
         removeBanner();
     }
 

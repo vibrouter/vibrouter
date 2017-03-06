@@ -7,7 +7,6 @@ import android.os.IBinder;
 import android.support.annotation.Nullable;
 
 import io.github.vibrouter.hardware.VibrationController;
-import io.github.vibrouter.models.Route;
 
 public class MainService extends Service {
     // Binder given to clients
@@ -34,7 +33,7 @@ public class MainService extends Service {
 
     @Override
     public void onDestroy() {
-        mNavigator.stopNavigation();
+        mNavigator.pauseNavigation();
         super.onDestroy();
     }
 

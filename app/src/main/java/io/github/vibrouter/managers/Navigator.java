@@ -44,6 +44,7 @@ public class Navigator implements PositionManager.OnPositionChangeListener {
             throw new IllegalArgumentException("Route should not be null!");
         }
         mRoute = route;
+        mNavigationSubGoals = new ArrayList<>(mRoute.getWayPoints());
     }
 
     public boolean isRouteSet() {
@@ -51,18 +52,16 @@ public class Navigator implements PositionManager.OnPositionChangeListener {
     }
 
     public void startNavigation(NavigationStatusListener listener) {
-        if (mRoute == null) {
+        if (!isRouteSet()) {
             throw new IllegalStateException("Route is not set yet!");
         }
-        mNavigationSubGoals = new ArrayList<>(mRoute.getWayPoints());
         mNavigationStatusListener = listener;
         mPositionManager.registerOnPositionChangeListener(this);
         mState = STATE_NAVIGATING;
     }
 
-    public void stopNavigation() {
+    public void pauseNavigation() {
         mState = STATE_IDLE;
-        mRoute = null;
         mNavigationStatusListener = null;
         mPositionManager.unregisterOnPositionChangeListener(this);
         mVibrationController.stopVibrate();

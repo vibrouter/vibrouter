@@ -237,9 +237,14 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         Log.i(TAG, "Start navigation!!");
         mNavigator.startNavigation(new Navigator.NavigationStatusListener() {
             @Override
-            public void currentDirection(int direction, boolean arrived) {
-                Log.i(TAG, "Navigation status. direction: " + direction + " arrived: " + arrived);
-                showBanner(selectBanner(direction, arrived));
+            public void currentDirection(int direction) {
+                int bannerId = selectBanner(direction);
+                showBanner(bannerId);
+            }
+
+            @Override
+            public void arrived() {
+                showBanner(R.drawable.banner_goal);
             }
         });
     }
@@ -361,10 +366,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         mBinding.banner.setAlpha(0.0f);
     }
 
-    private int selectBanner(int direction, boolean arrived) {
-        if (arrived) {
-            return R.drawable.banner_goal;
-        }
+    private int selectBanner(int direction) {
         switch (direction) {
             case Navigator.NavigationStatusListener.NAVIGATING_FORWARD:
                 return R.drawable.banner_forward;

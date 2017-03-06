@@ -16,7 +16,8 @@ public class Navigator implements PositionManager.OnPositionChangeListener {
         int NAVIGATING_LEFT = -1;
         int NAVIGATING_RIGHT = 1;
 
-        void currentDirection(int direction, boolean arrived);
+        void currentDirection(int direction);
+        void arrived();
     }
 
     private static final double FORWARD_ERROR_THRESHOLD = 30; // deg
@@ -69,16 +70,22 @@ public class Navigator implements PositionManager.OnPositionChangeListener {
 
     @Override
     public void onPositionChange(Coordinate position) {
-        if (isNavigating()) {
-            vibrateAndNavigateUser(position);
+        if (!isNavigating()) {
+            return;
         }
+        if (hasArrived(position)) {
+            mVibrationController.startVibrate(VibrationController.PATTERN_ARRIVE);
+            announceArrived();
+            return;
+        }
+        vibrateAndNavigateUser(position);
     }
 
     public boolean isNavigating() {
         return mState == STATE_NAVIGATING;
     }
 
-    LatLng chooseNextSubGoalFrom(LatLng current) {
+    private LatLng chooseNextSubGoalFrom(LatLng current) {
         if (mNavigationSubGoals.size() == 1) {
             // Last goal is destination
             return mNavigationSubGoals.get(0);
@@ -91,42 +98,43 @@ public class Navigator implements PositionManager.OnPositionChangeListener {
         return mNavigationSubGoals.get(0);
     }
 
-    boolean hasArrived(LatLng current, LatLng destination) {
+    private boolean hasArrived(Coordinate position) {
+        LatLng current = position.getLocation();
+        LatLng destination = mRoute.getDestination();
         double distance = GpsUtil.computeDistanceBetween(current, destination);
         return (distance < GOAL_DISTANCE_THRESHOLD);
     }
 
     private void vibrateAndNavigateUser(Coordinate position) {
         LatLng currentLocation = position.getLocation();
-        LatLng destinationLocation = mRoute.getDestination();
-
-        if (hasArrived(currentLocation, destinationLocation)) {
-            mVibrationController.startVibrate(VibrationController.PATTERN_ARRIVE);
-            announceNavigationStatus(NavigationStatusListener.NAVIGATING_FORWARD, true);
-            return;
-        }
-
         LatLng nextSubGoal = chooseNextSubGoalFrom(currentLocation);
         double currentRotation = position.getRotation();
         double subGoalDirection = GpsUtil.computeGoalDirection(currentLocation, nextSubGoal);
         double error = computeOrientationError(currentRotation, subGoalDirection);
         if (Math.abs(error) < FORWARD_ERROR_THRESHOLD) {
             mVibrationController.startVibrate(VibrationController.PATTERN_FORWARD);
-            announceNavigationStatus(NavigationStatusListener.NAVIGATING_FORWARD, false);
+            announceNavigationStatus(NavigationStatusListener.NAVIGATING_FORWARD);
         } else if (error < 0.0) {
             mVibrationController.startVibrate(VibrationController.PATTERN_RIGHT);
-            announceNavigationStatus(NavigationStatusListener.NAVIGATING_RIGHT, false);
+            announceNavigationStatus(NavigationStatusListener.NAVIGATING_RIGHT);
         } else if (error > 0.0) {
             mVibrationController.startVibrate(VibrationController.PATTERN_LEFT);
-            announceNavigationStatus(NavigationStatusListener.NAVIGATING_LEFT, false);
+            announceNavigationStatus(NavigationStatusListener.NAVIGATING_LEFT);
         }
     }
 
-    private void announceNavigationStatus(int status, boolean arrived) {
+    private void announceArrived() {
         if (mNavigationStatusListener == null) {
             return;
         }
-        mNavigationStatusListener.currentDirection(status, arrived);
+        mNavigationStatusListener.arrived();
+    }
+
+    private void announceNavigationStatus(int status) {
+        if (mNavigationStatusListener == null) {
+            return;
+        }
+        mNavigationStatusListener.currentDirection(status);
     }
 
     private double computeOrientationError(double current, double goal) {

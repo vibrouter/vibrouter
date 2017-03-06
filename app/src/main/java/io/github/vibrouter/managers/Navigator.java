@@ -25,21 +25,37 @@ public class Navigator implements PositionManager.OnPositionChangeListener {
     private Route mRoute;
     private NavigationStatusListener mNavigationStatusListener;
 
+    private static final int STATE_IDLE = 0;
+    private static final int STATE_NAVIGATING = 1;
+    private int mState = STATE_IDLE;
+
     public Navigator(PositionManager manager, VibrationController controller) {
         mPositionManager = manager;
         mVibrationController = controller;
     }
 
-    public void startNavigation(Route route, NavigationStatusListener listener) {
+    public void setRoute(Route route) {
         if (route == null) {
             throw new IllegalArgumentException("Route should not be null!");
         }
         mRoute = route;
+    }
+
+    public boolean isRouteSet() {
+        return mRoute != null;
+    }
+
+    public void startNavigation(NavigationStatusListener listener) {
+        if (mRoute == null) {
+            throw new IllegalStateException("Route is not set yet!");
+        }
         mNavigationStatusListener = listener;
         mPositionManager.registerOnPositionChangeListener(this);
+        mState = STATE_NAVIGATING;
     }
 
     public void stopNavigation() {
+        mState = STATE_IDLE;
         mRoute = null;
         mNavigationStatusListener = null;
         mPositionManager.unregisterOnPositionChangeListener(this);
@@ -54,7 +70,7 @@ public class Navigator implements PositionManager.OnPositionChangeListener {
     }
 
     public boolean isNavigating() {
-        return mRoute != null;
+        return mState == STATE_NAVIGATING;
     }
 
     private void vibrateAndNavigateUser(Coordinate position) {

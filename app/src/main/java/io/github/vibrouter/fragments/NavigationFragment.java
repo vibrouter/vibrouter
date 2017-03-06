@@ -70,8 +70,8 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     private GoogleMap mMap;
     private MainService mService;
     private RouteFinder mRouteFinder;
-    private Route mNavigationRoute;
     private PositionManager mPositionManager;
+    private Navigator mNavigator;
 
     private ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
@@ -80,12 +80,14 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
             mService = ((MainService.LocalBinder) service).getService();
             mPositionManager = mService.getPositionManager();
             mPositionManager.registerOnPositionChangeListener(mOnPositionChangeListener);
+            mNavigator = mService.getNavigator();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            mNavigator = null;
             mPositionManager.unregisterOnPositionChangeListener(mOnPositionChangeListener);
-            mOnPositionChangeListener = null;
+            mPositionManager = null;
             mService = null;
         }
     };
@@ -100,25 +102,25 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
             markDestination(destination);
             mRouteFinder.findRoute(mCurrentLocationMarker.getPosition(), destination,
                     new RouteFinder.OnRouteFoundCallback() {
-                @Override
-                public void onRouteFound(List<LatLng> route) {
-                    drawRoute(route);
-                    mNavigationRoute = new Route(route);
-                }
-            });
+                        @Override
+                        public void onRouteFound(List<LatLng> route) {
+                            drawRoute(route);
+                            mNavigator.setRoute(new Route(route));
+                        }
+                    });
         }
     };
 
     private PositionManager.OnPositionChangeListener mOnPositionChangeListener =
             new PositionManager.OnPositionChangeListener() {
-        @Override
-        public void onPositionChange(Coordinate position) {
-            if (!isMapReady()) {
-                return;
-            }
-            setCurrentPosition(position);
-        }
-    };
+                @Override
+                public void onPositionChange(Coordinate position) {
+                    if (!isMapReady()) {
+                        return;
+                    }
+                    setCurrentPosition(position);
+                }
+            };
 
     @Nullable
     @Override
@@ -229,11 +231,11 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
                     .show();
             return;
         }
-        if (mNavigationRoute == null) {
+        if (!mNavigator.isRouteSet()) {
             return;
         }
         Log.i(TAG, "Start navigation!!");
-        mService.startNavigation(mNavigationRoute, new Navigator.NavigationStatusListener() {
+        mNavigator.startNavigation(new Navigator.NavigationStatusListener() {
             @Override
             public void currentDirection(int direction, boolean arrived) {
                 Log.i(TAG, "Navigation status. direction: " + direction + " arrived: " + arrived);
@@ -243,7 +245,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
     }
 
     private void stopNavigation() {
-        mService.stopNavigation();
+        mNavigator.stopNavigation();
         removeBanner();
     }
 
@@ -331,7 +333,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
         if (mService == null) {
             return;
         }
-        if (mService.isNavigating()) {
+        if (mNavigator.isNavigating()) {
             stopNavigation();
         } else {
             startNavigation();

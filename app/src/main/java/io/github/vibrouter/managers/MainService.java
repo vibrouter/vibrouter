@@ -54,15 +54,7 @@ public class MainService extends Service {
         return mPositionManager;
     }
 
-    public boolean isNavigating() {
-        return mNavigator.isNavigating();
-    }
-
-    public void startNavigation(Route route, Navigator.NavigationStatusListener listener) {
-        mNavigator.startNavigation(route, listener);
-    }
-
-    public void stopNavigation() {
-        mNavigator.stopNavigation();
+    public Navigator getNavigator() {
+        return mNavigator;
     }
 }

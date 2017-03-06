@@ -2,6 +2,7 @@ package io.github.vibrouter.models;
 
 import com.google.android.gms.maps.model.LatLng;
 
+import java.util.Collections;
 import java.util.List;
 
 public class Route {
@@ -26,16 +27,7 @@ public class Route {
         return mDestination;
     }
 
-    public LatLng getNextWayPoint() {
-        if (!mWayPoints.isEmpty()) {
-            return mWayPoints.get(0);
-        }
-        return null;
-    }
-
-    public void removeWayPoint(LatLng pointToRemove) {
-        if (mWayPoints.contains(pointToRemove)) {
-            mWayPoints.remove(pointToRemove);
-        }
+    public List<LatLng> getWayPoints() {
+        return Collections.unmodifiableList(mWayPoints);
     }
 }

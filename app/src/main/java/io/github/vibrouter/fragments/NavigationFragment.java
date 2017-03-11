@@ -307,7 +307,7 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
 
     private void setCurrentPosition(Coordinate position) {
         LatLng location = position.getLocation();
-        double rotation = position.getRotation();
+        float rotation = position.getRotation();
         MarkerOptions markerOptions = new MarkerOptions();
         // zoom to current position on initialization
         if (mCurrentLocationMarker == null) {
@@ -322,8 +322,14 @@ public class NavigationFragment extends Fragment implements OnMapReadyCallback {
             mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         } else {
             mCurrentLocationMarker.setPosition(location);
-            mCurrentLocationMarker.setRotation((float) rotation);
+            mCurrentLocationMarker.setRotation(rotation - getCameraBearing());
         }
+    }
+
+    private float getCameraBearing() {
+        return isMapReady()
+                ? mMap.getCameraPosition().bearing
+                : 0.0f;
     }
 
     private void removeCurrentLocationMarker() {

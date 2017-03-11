@@ -53,7 +53,7 @@ public class PositionManager implements RotationSensor.OnRotationChangeListener,
     }
 
     @Override
-    public void onRotationChange(double rotation) {
+    public void onRotationChange(float rotation) {
         updateCurrentPosition(mCurrentPosition.getLocation(), rotation);
     }
 
@@ -62,7 +62,7 @@ public class PositionManager implements RotationSensor.OnRotationChangeListener,
         updateCurrentPosition(location, mCurrentPosition.getRotation());
     }
 
-    private void updateCurrentPosition(LatLng location, double rotation) {
+    private void updateCurrentPosition(LatLng location, float rotation) {
         mCurrentPosition = new Coordinate(location, rotation);
         if (mCurrentPosition.getLocation() != null
                 && mCurrentPosition.getRotation() != Double.NaN) {

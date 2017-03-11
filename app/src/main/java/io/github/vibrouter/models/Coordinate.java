@@ -3,12 +3,12 @@ package io.github.vibrouter.models;
 import com.google.android.gms.maps.model.LatLng;
 
 public class Coordinate {
-    public static final Coordinate INVALID_COORDINATE = new Coordinate(null, Double.NaN);
+    public static final Coordinate INVALID_COORDINATE = new Coordinate(null, Float.NaN);
 
     private LatLng mLocation;
-    private double mRotation;
+    private float mRotation;
 
-    public Coordinate(LatLng location, double rotation) {
+    public Coordinate(LatLng location, float rotation) {
         mLocation = location;
         mRotation = rotation;
     }
@@ -17,7 +17,7 @@ public class Coordinate {
         return mLocation;
     }
 
-    public double getRotation() {
+    public float getRotation() {
         return mRotation;
     }
 }

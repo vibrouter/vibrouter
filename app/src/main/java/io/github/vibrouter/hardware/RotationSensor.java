@@ -11,7 +11,7 @@ import java.util.Set;
 
 public class RotationSensor implements SensorEventListener {
     public interface OnRotationChangeListener {
-        void onRotationChange(double newRotation);
+        void onRotationChange(float newRotation);
     }
 
     private SensorManager mSensorManager;
@@ -38,7 +38,7 @@ public class RotationSensor implements SensorEventListener {
         float[] rotationVectorReading = new float[3];
         System.arraycopy(event.values, 0,
                 rotationVectorReading, 0, rotationVectorReading.length);
-        float rotation = computeDeviceOrientation(rotationVectorReading);
+        float rotation = clipAngle(computeDeviceOrientation(rotationVectorReading));
         announceNewRotation(rotation);
     }
 
@@ -70,5 +70,11 @@ public class RotationSensor implements SensorEventListener {
             orientationAngles[i] = (float) Math.toDegrees(orientationAngles[i]);
         }
         return orientationAngles[0];
+    }
+
+    private float clipAngle(float rotation) {
+        return (rotation < 0)
+                ? rotation + 360.0f
+                : rotation;
     }
 }
